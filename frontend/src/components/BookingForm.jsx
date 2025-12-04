@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createAppointment } from "../axios";
+import { useState, useEffect } from "react";
+import { createAppointment, getAvailableSlots } from "../axios";
 
 export default function BookingForm() {
   const [formData, setFormData] = useState({
@@ -11,9 +11,26 @@ export default function BookingForm() {
   });
 
   const [message, setMessage] = useState("");
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+
+    // If date changed, fetch available slots
+    if (name === "date") {
+      setFormData((prev) => ({ ...prev, timeSlot: "" }));
+      if (value) {
+        setSlotsLoading(true);
+        getAvailableSlots(value)
+          .then((res) => setAvailableSlots(res.data || []))
+          .catch(() => setAvailableSlots([]))
+          .finally(() => setSlotsLoading(false));
+      } else {
+        setAvailableSlots([]);
+      }
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -70,20 +87,33 @@ export default function BookingForm() {
           required
         />
 
-        <select
-          name="timeSlot"
-          className="border p-2 rounded"
-          value={formData.timeSlot}
-          onChange={handleChange}
-          required
-        >
-          <option value="">Select Time Slot</option>
-          <option value="10AM">10 AM</option>
-          <option value="11AM">11 AM</option>
-          <option value="12PM">12 PM</option>
-          <option value="4PM">4 PM</option>
-          <option value="5PM">5 PM</option>
-        </select>
+        <label className="flex flex-col">
+          <span className="mb-1">Time Slot</span>
+          <select
+            name="timeSlot"
+            className="border p-2 rounded"
+            value={formData.timeSlot}
+            onChange={handleChange}
+            required
+            disabled={slotsLoading || !formData.date}
+          >
+            <option value="">{slotsLoading ? "Loading slots..." : "Select Time Slot"}</option>
+            {availableSlots.length > 0 ? (
+              availableSlots.map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/AM|PM/, (m) => (m === "AM" ? " AM" : " PM"))}
+                </option>
+              ))
+            ) : (
+              // if no slots returned (e.g., date not selected or none available) show full list
+              ["10AM", "11AM", "12PM", "4PM", "5PM"].map((s) => (
+                <option key={s} value={s}>
+                  {s.replace(/AM|PM/, (m) => (m === "AM" ? " AM" : " PM"))}
+                </option>
+              ))
+            )}
+          </select>
+        </label>
 
         <textarea
           name="reason"

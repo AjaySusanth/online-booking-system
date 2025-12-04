@@ -10,9 +10,6 @@ function normalizeDate(dateInput) {
   return d;
 }
 
-function escapeRegex(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 // Create Appointment
 const createAppointment = async (req, res) => {
@@ -30,19 +27,7 @@ const createAppointment = async (req, res) => {
   }
 
   try {
-    // Check duplicate by same name on the same date
-    if (fullName && fullName.trim() !== "") {
-      const nameRegex = new RegExp(`^${escapeRegex(fullName.trim())}$`, "i");
-      const sameName = await Appointment.findOne({
-        date: normalizedDate,
-        fullName: nameRegex,
-      });
-      if (sameName) {
-        return res
-          .status(400)
-          .json({ message: "You already have an appointment on this date." });
-      }
-    }
+    // (Removed same-name-per-day restriction)
 
     // Check duplicate slot
     const existing = await Appointment.findOne({
@@ -116,3 +101,24 @@ module.exports = {
   getAppointmentById,
   deleteAppointment,
 };
+
+// Get available slots for a given date
+const getAvailableSlots = async (req, res) => {
+  const { date } = req.query;
+  const normalizedDate = normalizeDate(date);
+  if (!normalizedDate) {
+    return res.status(400).json({ message: "Invalid date format." });
+  }
+
+  try {
+    const booked = await Appointment.find({ date: normalizedDate }).select("timeSlot -_id");
+    const bookedSet = new Set(booked.map((b) => b.timeSlot));
+    const available = allowedSlots.filter((s) => !bookedSet.has(s));
+    res.json(available);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// append to exports
+module.exports.getAvailableSlots = getAvailableSlots;
