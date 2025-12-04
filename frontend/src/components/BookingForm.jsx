@@ -105,7 +105,7 @@ export default function BookingForm() {
                 </option>
               ))
             ) : (
-              // if no slots returned (e.g., date not selected or none available) show full list
+
               ["10AM", "11AM", "12PM", "4PM", "5PM"].map((s) => (
                 <option key={s} value={s}>
                   {s.replace(/AM|PM/, (m) => (m === "AM" ? " AM" : " PM"))}
